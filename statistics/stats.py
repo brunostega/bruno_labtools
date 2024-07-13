@@ -1,4 +1,5 @@
 import numpy as np 
+import scipy as sp
 
 def autocorrelation_function(data):
     """
@@ -56,3 +57,51 @@ def block_analysis(data, block_size_step=2):
     block_sizes = np.array(len(data)/blocks, dtype = int)
 
     return blocks,block_sizes, np.mean(data), sigma_blocks
+
+def cdf_poisson(t,tau):
+    """
+    Cumulative distribution function (CDF) for the Poisson distribution.
+
+    Parameters:
+    t (array-like): A one-dimensional array of time values.
+    tau (float): The mean time between events (tau) for the Poisson distribution.
+
+    Returns:
+    array: The Poisson cumulative distribution evaluated at the given time values.
+    """
+    return 1 - np.exp(-t/tau)
+
+def poisson_fitting(times):
+    """
+    Fit a Poisson distribution to the given times and perform a Kolmogorov-Smirnov test.
+
+    Parameters:
+    times (array-like): A one-dimensional array or list of times (event occurrences).
+
+    Returns:
+    tuple: A tuple containing:
+           - popt (array): Optimal parameter for the Poisson distribution fit.
+           - ks_test (tuple): Results of the Kolmogorov-Smirnov test comparing
+                              the empirical cumulative distribution function (CDF)
+                              with the fitted Poisson CDF.
+
+    The function performs the following steps:
+    1. Calculates the empirical cumulative distribution of the given times.
+    2. Fits the empirical data to a Poisson cumulative distribution function (CDF).
+    3. Conducts a Kolmogorov-Smirnov test to compare the empirical CDF with the fitted Poisson CDF.
+    """
+
+    #calculate cumulative 
+    ordered_times = np.sort(times)
+    cum = np.array([ i / (len(ordered_times) - 1) for i in range(len(ordered_times)) ])
+
+    #fit to poisson distribution
+    popt, pcov = sp.optimize.curve_fit(cdf_poisson, ordered_times, cum, p0 = np.mean(ordered_times))
+    fit_data = cdf_poisson(ordered_times, popt[0])
+
+    #kolmogorov-smirnov test
+    ks_test = sp.stats.kstest(cum, fit_data)
+
+    return popt[0], ks_test
+
+
