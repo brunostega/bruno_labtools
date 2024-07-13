@@ -1,0 +1,20 @@
+Deactivate conda env
+
+#patch plumed: go into gromacs-2021(version) folder and do:
+
+	plumed patch -p
+
+#cmake: say where to install it, and with which compilers (use the same used for plumed one)
+
+	cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/software/gromacs -DGMX_BUILD_OWN_FFTW=ON -DGMX_MPI=on -DREGRESSIONTEST_DOWNLOAD=ON -DCMAKE_CXX_COMPILER=mpicxx -DCMAKE_C_COMPILER=mpicc
+
+#use clang and clang++ compiler
+#make using 4 cores
+	make -j4
+	make check
+	make install   #sudo is not needed if done locally
+
+#source it
+
+	source /usr/local/software/gromacs/bin/GMXRC
+

@@ -1,0 +1,19 @@
+Deactivate every conda env. Check gcc or mpicc command (which gcc)
+
+
+#configuration:
+	./configure --prefix=/home/brunostega/softwere/plumed2 CXX=/usr/bin/mpicxx C=/usr/bin/mpicc
+
+#make
+	make -j 4
+
+#install 
+
+	make install
+
+#source
+
+	source sourceme.sh
+
+
+
