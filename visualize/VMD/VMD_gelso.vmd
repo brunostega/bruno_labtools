@@ -1,0 +1,54 @@
+mol delrep 0 0
+mol color Name
+mol modcolor 0 0 Index
+mol representation NewCartoon 0.220000 10.000000 4.100000 0
+mol selection all
+mol material Diffuse
+mol addrep 0
+mol modcolor 0 0 Index
+
+display projection Orthographic
+display depthcue off
+axes location Off
+
+mol color ColorID 1
+mol selection resid 47 and type CA
+mol representation VDW 1.000000 12.000000
+mol material Diffuse
+mol addrep 0
+
+mol color ColorID 1
+mol selection resid 324 and type CA
+mol representation VDW 1.000000 12.000000
+mol material Diffuse
+mol addrep 0
+
+mol color ColorID 1
+mol selection resid 249 and type CA
+mol representation VDW 1.000000 12.000000
+mol material Diffuse
+mol addrep 0
+
+mol color ColorID 1
+mol selection resid 747 and type CA
+mol representation VDW 1.000000 12.000000
+mol material Diffuse
+mol addrep 0
+
+mol color ColorID 1
+mol selection resid 632 and type CA
+mol representation VDW 1.000000 12.000000
+mol material Diffuse
+mol addrep 0
+
+
+label add Atoms 0/330 
+label add Atoms 0/2495 
+label add Bonds 0/330 0/2495 
+
+label add Atoms 0/5763 
+label add Atoms 0/1951 
+label add Bonds 0/1951 0/5763 
+
+label add Atoms 0/4845 
+label add Bonds 0/2495 0/4845 

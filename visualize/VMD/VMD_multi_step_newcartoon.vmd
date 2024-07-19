@@ -1,0 +1,82 @@
+
+proc alignAndCenter {{mol top}} {
+    # Use frame 0 of the protein for the reference
+    set reference [atomselect $mol "protein" frame 0]
+
+    # The frame being compared, select the protein for alignment
+    set compareProtein [atomselect $mol "protein"]
+
+    # Entire system for moving based on calculated transformation
+    set entireSystem [atomselect $mol "all"]
+
+    set num_steps [molinfo $mol get numframes]
+    for {set frame 0} {$frame < $num_steps} {incr frame} {
+        # Set the correct frame for the comparison
+        $compareProtein frame $frame
+        $entireSystem frame $frame
+
+        # Compute the transformation
+        set trans_mat [measure fit $compareProtein $reference]
+
+        # Move the entire system with the transformation computed from the protein alignment
+        $entireSystem move $trans_mat
+
+        # Optionally center the entire system after alignment
+        # Calculate the center of mass of the entire system and translate it to the origin
+        set center [measure center $entireSystem]
+        $entireSystem moveby [vecscale -1.0 $center]
+    }
+
+    # Center the protein in the display after alignment
+    set centerProtein [atomselect $mol "protein"]
+    set center [measure center $centerProtein]
+    set move_vector [vecscale -1.0 $center]
+    display moveby $move_vector
+
+    # Free memory by deleting atom selections
+    $reference delete
+    $compareProtein delete
+    $entireSystem delete
+    $centerProtein delete
+}
+
+# Call the procedure, assuming the top molecule is being processed
+alignAndCenter
+
+# Remove all existing representations
+mol delrep 0 top
+
+#mol representation QuickSurf 0.8 0.8 0.5
+mol representation NewCartoon 0.300000 50.000000 4.100000 0
+mol selection protein
+mol color ColorID 6
+mol material Diffuse
+mol modcolor 0 0 Scale $my_color_scale
+mol addrep top
+
+# Set graphic options for resname BNZ (ligands)
+mol representation Licorice 0.300000 100.000000 100.000000
+mol selection "not protein"
+mol color Timestep
+mol material Diffuse
+mol addrep top
+mol drawframes top 1 {1:1:1000}
+
+color scale method RWB
+color scale midpoint 0.500000
+color scale min 0.00000
+color scale max 1.000000
+
+source /home/bruno/VMD_scripts/sscache.tcl             
+start_sscache
+animate goto 0
+
+# Display setting
+axes location Off
+display depthcue   off
+color Display {Background} white
+display projection Orthographic
+display resetview
+display rendermode GLSL
+# Render
+#render TachyonInternal unb.tga

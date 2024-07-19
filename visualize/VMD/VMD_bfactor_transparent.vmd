@@ -1,0 +1,38 @@
+display projection Orthographic
+display depthcue off
+axes location Off
+
+color Display Background white
+#color change rgb 2 gray 0.482587 0.482587 0.482587
+
+mol delrep 0 top
+
+mol addrep 0
+mol modstyle 0 0 NewCartoon 0.300000 10.000000 4.100000 0
+mol modmaterial 0 0 Diffuse
+mol modcolor 0 0 ColorID 2
+
+
+mol addrep 0
+mol modstyle 1 0 QuickSurf 0.800000 1.600000 0.700000 3.000000
+material change specular Transparent 0.000000
+mol modmaterial 1 0 Transparent
+mol modcolor 1 0 Beta
+color scale method CET_L18
+material change opacity Transparent 0.800000
+
+set viewpoints([molinfo top]) {{{1 0 0 -70.3793} {0 1 0 -70.3957} {0 0 1 -33.1177} {0 0 0 1}} {{-0.392411 0.833905 -0.388092 0} {0.128762 0.467586 0.874519 0} {0.910733 0.293199 -0.290862 0} {0 0 0 1}} {{0.0421738 0 0 0} {0 0.0421738 0 0} {0 0 0.0421738 0} {0 0 0 1}} {{1 0 0 0} {0 1 0 0} {0 0 1 0} {0 0 0 1}}}
+lappend viewplist [molinfo top]
+set topmol [molinfo top]
+# done with molecule 0
+foreach v $viewplist {
+  molinfo $v set {center_matrix rotate_matrix scale_matrix global_matrix} $viewpoints($v)
+}
+foreach v $fixedlist {
+  molinfo $v set fixed 1
+}
+unset viewplist
+unset fixedlist
+
+
+display rendermode GLSL
