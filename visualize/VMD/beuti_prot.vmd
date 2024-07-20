@@ -1,0 +1,19 @@
+display projection Orthographic
+display depthcue off
+axes location Off
+color Display Background white
+display rendermode GLSL
+display ambientocclusion on
+display shadows on
+display dof on
+
+mol delrep 0 top
+
+#system
+mol color Name
+mol representation NewCartoon 0.300000 50.000000 4.100000 0
+mol selection protein
+mol material Diffuse
+material change outlinewidth Diffuse 0.00000
+material change outline Diffuse 1.200000
+mol addrep 0

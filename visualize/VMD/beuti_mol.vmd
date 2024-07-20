@@ -1,0 +1,17 @@
+display projection Orthographic
+display depthcue off
+axes location Off
+color Display Background white
+display rendermode GLSL
+display ambientocclusion on
+display shadows on
+display dof on
+
+#system
+mol modstyle 0 0 CPK 1.200000 0.800000 42.000000 47.000000
+mol modmaterial 0 0 Diffuse
+material change outlinewidth Diffuse 0.430000
+material change outline Diffuse 1.900000
+color Name C  silver 
+mol addrep 0
+
