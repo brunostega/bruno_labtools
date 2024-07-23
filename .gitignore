@@ -1,2 +1,5 @@
 /statistics/data_for_testing/
 statistics/__pycache__/
+topology/lig_param/input/*
+topology/lig_param/output/*
+topology/lig_param/get_c12.py
