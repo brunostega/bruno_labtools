@@ -416,9 +416,8 @@ def get_masses(bonds,atoms_types_noH):
     
     mass_i = np.array(mass_i)
     mass_j = np.array(mass_j)
-
     reduced_mass = mass_i*mass_j/(mass_j+mass_i)
-
+    
     return reduced_mass
 
 def save_gro(gro, mapping_dict, h_atom_num, atom_names_mapped, args):
@@ -486,6 +485,7 @@ def main():
     parser.add_argument("--dihedral_scale", type=float, default=1.0, help="Scaling factor for dihedrals")
     parser.add_argument("--angle_scale", type=float, default=1.0, help="Scaling factor for angles")
     parser.add_argument("--impropers_scale", type=float, default=1.0, help="Scaling factor for impropers")
+    parser.add_argument("--check_freq", type=bool, default=False, help="Checks frequencies of bond vibration")
     
     args = parser.parse_args()
     input_files = os.listdir(f"input/{args.system}")
@@ -543,15 +543,15 @@ def main():
     else: impropers_noH = pd.DataFrame()
 
     #calculate oscillation fewquencies of bonds 
-    #print(bonds_noH)
-    #print(atoms_types_noH)
     reduced_masses = get_masses(bonds_noH, atoms_types_noH)
-    f = np.sqrt(bonds_noH["c1"].to_numpy()/reduced_masses)*1e12
+    FACTOR = 10/(1.6605*6.022)
+    f = np.sqrt(bonds_noH["c1"].to_numpy()/FACTOR/reduced_masses)
     
     #TODO compare this frequencies to the dt step and scale them down if necessary
-    dt_mego = 5e-15
-   
-    if np.any(1/(f*dt_mego)<10):
+    dt_mego = 5e-3
+    print("waa")
+    print("T = ",1/f)
+    if np.any(1/(f*dt_mego)<10) and args.check_freq:
         print("""
 
 FOUND FAST OSCILLATION --> RESCALE BONDS
@@ -567,7 +567,7 @@ FOUND FAST OSCILLATION --> RESCALE BONDS
         print(1/(ff*dt_mego))
     else:
         new_bonds = bonds_noH["c1"].to_numpy() 
-        ff = np.sqrt(new_bonds/reduced_masses)*1e12
+        ff = np.sqrt(new_bonds/FACTOR/reduced_masses)
         print(1/(ff*dt_mego))
 
     bonds_noH["c1"] = new_bonds
