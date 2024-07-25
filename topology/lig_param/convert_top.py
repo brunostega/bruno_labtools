@@ -9,14 +9,15 @@ import warnings
 
 warnings.filterwarnings("ignore")
 date = datetime.datetime.now()
-def make_header(system):
+def make_header(args):
     header = f"""
 ;
 ;  Modified topology: removed hydrogen and reindexed all indeces accordingly
-;  Starting topology input system: input/{system}
-;  Ending topology output: input{system} 
+;  Starting topology input system: input/{args.system}
+;  Ending topology output: input{args.system} 
 ;  At date: {date.strftime("%c")}
-;
+;  Scale masses: {args.scale_masses}
+;  Scale bonds : {args.scale_bonds}
 
 """
     return header
@@ -85,7 +86,6 @@ def get_dihedrals(topology):
             "per": [ [ multi_dih_type.per for multi_dih_type in dihedral.type ] if topology[0].funct==9 else dihedral.type.per for dihedral in topology],
         }
     )
-    #print(dihedrals_dataframe)
     #dihedrals_dataframe["phi_k"] = dihedrals_dataframe["phi_k"] * 4.184
     return dihedrals_dataframe
 
@@ -334,11 +334,33 @@ def convert_impropers(dihedrals, h_atom_num, mapping_dict):
 
     return dihedrals_noH
 
-def get_H_mapping(atoms):
+def get_H_mapping(atoms, args):
+
     #copy the atom type and remove hydrogens
     atoms_noH = atoms.copy()
+
+    #print(len(atoms_noH["mass"]))
     atoms_noH = atoms_noH[~atoms_noH['name'].str.startswith('H')]
     atoms_H   = atoms[atoms['name'].str.startswith('H')]
+
+    #Calculate new masses: redistribute H mass on heavy atom
+    if args.scale_masses: 
+        mass_H_removed = np.zeros(len(atoms_noH["mass"]))
+        mass_appo,idx_heavy_atom,idx_appo = 0,0,0
+        for i in range(len(atoms)):
+            if atoms["name"].to_numpy()[i][0]!='H':
+                if i > 0 :
+                    mass_H_removed[idx_appo] = atoms["mass"].to_numpy()[idx_heavy_atom] + mass_appo
+                    idx_appo += 1
+
+                idx_heavy_atom = i
+                mass_appo = 0
+            else:
+                mass_appo += atoms["mass"].to_numpy()[i]
+        if idx_appo < len(mass_H_removed): mass_H_removed[idx_appo] = atoms["mass"].to_numpy()[idx_heavy_atom] + mass_appo
+
+        atoms_noH["mass"] = mass_H_removed
+
     #save the indexes of the hydrogens
     h_atom_num = np.array(atoms_H.index) + 1
 
@@ -351,10 +373,10 @@ def get_H_mapping(atoms):
 
     #create the mapping function to map the "with H enumeration" to the "without H enumeration"
     mapping_dict = dict(zip(old_enumeration, new_enumeration))
-    
+
     return mapping_dict, h_atom_num, atoms_noH
 
-def dataframe_to_write(df, header=True):
+def dataframe_to_write(df, header=True, col_space = []):
     """
     Returns a stringified and formated dataframe and a message if the dataframe is empty.
 
@@ -373,7 +395,8 @@ def dataframe_to_write(df, header=True):
         return "; The following parameters where not parametrized on multi-eGO.\n; If this is not expected, check the reference topology."
     else:
         df.rename(columns={df.columns[0]: f"; {df.columns[0]}"}, inplace=True)
-        return df.to_string(index=False, header=header)
+        if len(col_space) == 0: return df.to_string(index=False, header=header)
+        else:                   return df.to_string(index=False, header=header, col_space = col_space)
 
 def define_c12(sigma, epsilon):
     kT = 2.49 #kJ/mol
@@ -404,11 +427,7 @@ def get_masses(bonds,atoms_types_noH):
     
     mass_i = []
     mass_j = []
-    #print(bonds["ai"].to_numpy()[0])
-    #print(bonds["aj"].to_numpy()[0])
-    #print(len(bonds))
     for i in range(len(bonds)):
-        #print(i)
         ai = bonds["ai"].to_numpy()[i]
         aj = bonds["aj"].to_numpy()[i]
         mass_i.append(float(atoms_types_noH["mass"].loc[atoms_types_noH["atom"]==ai]))
@@ -441,22 +460,22 @@ def save_gro(gro, mapping_dict, h_atom_num, atom_names_mapped, args):
 
         file.write(f"{gro.atoms[0].residue.name} no H; {date.strftime('%c')}\n")
 
-        file.write(f"{len(gro_noH)}\n")
+        file.write(f"   {len(gro_noH)}\n")
 
-        file.write(f"{dataframe_to_write(gro_noH, False)}\n")
-        file.write(f"    5.00000     5.00000    5.00000")
+        file.write(f"{dataframe_to_write(gro_noH, False, [8,6,4,7,7,7])}\n")
+        file.write(f"   5.00000  5.00000  5.00000")
 
-def save_top(args, atoms_types_noH, atoms_noH, bonds_noH, pairs_noH, angles_noH, dihedrals_noH, impropers_noH):
+def save_top(args, atoms_types_noH, atoms_noH, bonds_noH, pairs_noH, angles_noH, dihedrals_noH, impropers_noH, MOL_NAME):
     with open(f"output/{args.system}/topol_noH.top", "w") as file:
 
-        file.write(make_header(args.system))
+        file.write(make_header(args))
 
         file.write("[ atomtypes ]\n")
         file.write(f"{dataframe_to_write(atoms_types_noH)}\n\n")
 
         file.write("[ moleculetype ]\n")
         file.write("; Name            nrexcl\n")
-        file.write("  DAS             3\n\n")
+        file.write(f"  {MOL_NAME}             3\n\n")
 
         file.write("[ atoms ]\n")
         file.write(f"{dataframe_to_write(atoms_noH)}\n\n")
@@ -485,9 +504,24 @@ def main():
     parser.add_argument("--dihedral_scale", type=float, default=1.0, help="Scaling factor for dihedrals")
     parser.add_argument("--angle_scale", type=float, default=1.0, help="Scaling factor for angles")
     parser.add_argument("--impropers_scale", type=float, default=1.0, help="Scaling factor for impropers")
-    parser.add_argument("--check_freq", type=bool, default=False, help="Checks frequencies of bond vibration")
+    parser.add_argument("--scale_bonds",  type=bool, default=True, help="Checks frequencies of bond vibration and scale them if necessary")
+    parser.add_argument("--scale_masses", type=bool, default=False, help="Rescale masses of heavy atoms after removal of Hs")
     
     args = parser.parse_args()
+    if args.scale_masses:
+        print("""
+              
+Scaling masses = True
+#WARNING: automatic rescaling works if H atoms are after the connected heavy atom.
+If this is not the case modify them by hand
+              
+              """)
+    if args.scale_bonds:
+        print("""
+Scaling bonds = True
+Check frequencies 
+              
+              """)
     input_files = os.listdir(f"input/{args.system}")
     gro_appo = [f for f in input_files if ".gro" in f]
     top_appo = [f for f in input_files if ".top" in f]
@@ -501,10 +535,12 @@ def main():
     else:
         top = pmd.load_file(f"input/{args.system}/{top_appo[0]}")
 
+    MOL_NAME = top.residues[0].name
 
     if len(gro_appo) > 1:
         print("Input directory contains more than 1 .gro file! check your input file and select the proper one")
         exit()
+
     elif len(gro_appo) == 1:
         gro = pmd.load_file(f"input/{args.system}/{gro_appo[0]}")
 
@@ -519,10 +555,9 @@ def main():
     if len(top.impropers)>0: impropers = get_dihedrals(top.impropers)
     else: impropers = []
 
-    #print(atoms_types)
     #get hydrogen mapping objects
-    mapping_dict, h_atom_num, atoms_types_noH = get_H_mapping(atoms_types)
-    mapping_dict, h_atom_num, atoms_noH       = get_H_mapping(atoms)
+    mapping_dict, h_atom_num, atoms_types_noH = get_H_mapping(atoms_types, args)
+    mapping_dict, h_atom_num, atoms_noH       = get_H_mapping(atoms, args)
 
     #reindex the new dataframe
     atoms_noH["nr"]         = np.arange(1,len(atoms_noH)+1, 1)
@@ -544,31 +579,23 @@ def main():
 
     #calculate oscillation fewquencies of bonds 
     reduced_masses = get_masses(bonds_noH, atoms_types_noH)
-    FACTOR = 10/(1.6605*6.022)
-    f = np.sqrt(bonds_noH["c1"].to_numpy()/FACTOR/reduced_masses)
+    f = np.sqrt(bonds_noH["c1"].to_numpy()/reduced_masses)
     
     #TODO compare this frequencies to the dt step and scale them down if necessary
+    GROM_THRESHOLD = 10
     dt_mego = 5e-3
-    print("waa")
-    print("T = ",1/f)
-    if np.any(1/(f*dt_mego)<10) and args.check_freq:
-        print("""
 
-FOUND FAST OSCILLATION --> RESCALE BONDS
-              
-              """)
-        GROM_THRESHOLD = 10
-        print(1/(f*dt_mego))
+    #print("T = ",np.pi*2/f)
+    if np.any(np.pi/(f*dt_mego)<GROM_THRESHOLD) and args.scale_bonds:
+        print("""###FAST OSCILLATION FOUND --> RESCALE BONDS""")
+
         f_max = np.max(f)
-        print(bonds_noH)
-        new_bonds = bonds_noH["c1"].to_numpy() / ( 1.05 * f_max * dt_mego * GROM_THRESHOLD )
+        new_bonds = bonds_noH["c1"].to_numpy() / (f_max * dt_mego /(2*np.pi) * GROM_THRESHOLD* 1.01 )**2
         print("Rescaled all bonds")
-        ff = np.sqrt(new_bonds/reduced_masses)*1e12
-        print(1/(ff*dt_mego))
+        ff = np.sqrt(new_bonds/reduced_masses)
     else:
         new_bonds = bonds_noH["c1"].to_numpy() 
-        ff = np.sqrt(new_bonds/FACTOR/reduced_masses)
-        print(1/(ff*dt_mego))
+        ff = np.sqrt(new_bonds/reduced_masses)
 
     bonds_noH["c1"] = new_bonds
     #print(bonds_noH)
@@ -596,9 +623,9 @@ FOUND FAST OSCILLATION --> RESCALE BONDS
     if len(gro_appo) > 0: save_gro(gro, mapping_dict, h_atom_num, atom_names_mapped, args)
 
     # write output topology
-    save_top(args, atoms_types_noH, atoms_noH, bonds_noH, pairs_noH, angles_noH, dihedrals_noH, impropers_noH)
+    save_top(args, atoms_types_noH, atoms_noH, bonds_noH, pairs_noH, angles_noH, dihedrals_noH, impropers_noH, MOL_NAME)
    
-    atoms_types_noH.to_csv(f'output/{args.system}/custom_dict.csv', index=False)  
+    atoms_types_noH.to_csv(f'output/{args.system}/custom_c12.csv', index=False)  
     print("""
 \n\nFinished converting the topology.
 Don't forget to fix the dihedrals!! ;-)
