@@ -39,8 +39,9 @@ def main():
             [numbers[1], numbers[2], numbers[3]],
             [numbers[2], numbers[3], numbers[4]],
             [numbers[0], numbers[1], numbers[2], numbers[3]],
-            [numbers[2], numbers[3], numbers[4], numbers[5]],
-            [numbers[1], numbers[2], numbers[3], numbers[4]]
+            [numbers[1], numbers[2], numbers[3], numbers[4]],
+            [numbers[2], numbers[3], numbers[4], numbers[5]]
+
         ]
         
         output = []
